@@ -2,35 +2,30 @@ package lru
 
 import "sync"
 
-type Node[V any] struct {
-	// TODO: попробовать заменить пустой интерфейс на тип V
+type Node[K comparable, V any] struct {
 	Value V
-	Next  *Node[V]
-	Prev  *Node[V]
+	Key   K
+	Next  *Node[K, V]
+	Prev  *Node[K, V]
 }
 
-func newNode[V any](value V) *Node[V] {
-	return &Node[V]{Value: value}
+func newNode[K comparable, V any](key K, value V) *Node[K, V] {
+	return &Node[K, V]{Key: key, Value: value}
 }
 
 type LRUCache[K comparable, V any] struct {
 	mu               *sync.Mutex
 	length, capacity int
-	head, tail       *Node[V]
-	lookup           map[K]*Node[V]
-
-	// нужна толькоко в одном месте что бы узнать ключ по ноде
-	// но может лучше хранить ключи в ноде? или запоминать ключ хвоста?
-	reverseLookup map[*Node[V]]K
+	head, tail       *Node[K, V]
+	lookup           map[K]*Node[K, V]
 }
 
-func newLRUCache[K comparable, V any](capacity int) LRUCache[K, V] {
+func NewLRUCache[K comparable, V any](capacity int) LRUCache[K, V] {
 	lru := LRUCache[K, V]{
-		mu:            &sync.Mutex{},
-		length:        0,
-		capacity:      capacity,
-		lookup:        make(map[K]*Node[V]),
-		reverseLookup: make(map[*Node[V]]K),
+		mu:       &sync.Mutex{},
+		length:   0,
+		capacity: capacity,
+		lookup:   make(map[K]*Node[K, V]),
 	}
 
 	return lru
@@ -44,8 +39,7 @@ func (l *LRUCache[K, V]) Reset(capacity int) {
 	l.capacity = capacity
 	l.head = nil
 	l.tail = nil
-	l.lookup = make(map[K]*Node[V])
-	l.reverseLookup = make(map[*Node[V]]K)
+	l.lookup = make(map[K]*Node[K, V])
 }
 
 func (l *LRUCache[K, V]) Update(key K, value V) {
@@ -84,12 +78,11 @@ func (l *LRUCache[K, V]) update(key K, value V) {
 		l.prepend(node)
 		node.Value = value
 	} else {
-		node = newNode(value)
+		node = newNode(key, value)
 		l.prepend(node)
 		l.length++
 		l.trimCache()
 		l.lookup[key] = node
-		l.reverseLookup[node] = key
 	}
 }
 
@@ -111,13 +104,12 @@ func (l *LRUCache[K, V]) trimCache() {
 	}
 	tail := l.tail
 	l.detach(tail)
-	key := l.reverseLookup[tail]
+	key := tail.Key
 	delete(l.lookup, key)
-	delete(l.reverseLookup, tail)
 	l.length--
 }
 
-func (l *LRUCache[K, V]) detach(node *Node[V]) {
+func (l *LRUCache[K, V]) detach(node *Node[K, V]) {
 	if node.Prev != nil {
 		node.Prev.Next = node.Next
 	}
@@ -134,7 +126,7 @@ func (l *LRUCache[K, V]) detach(node *Node[V]) {
 	node.Next = nil
 }
 
-func (l *LRUCache[K, V]) prepend(node *Node[V]) {
+func (l *LRUCache[K, V]) prepend(node *Node[K, V]) {
 	if l.head == nil {
 		l.tail = node
 		l.head = node

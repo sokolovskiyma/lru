@@ -6,7 +6,7 @@ import (
 
 func TestLRUCache(t *testing.T) {
 	// Create a new LRU cache with a capacity of 3
-	lru := newLRUCache[string, int](3)
+	lru := NewLRUCache[string, int](3)
 
 	// Test 1: Adding and getting values
 	lru.Update("key1", 1)
@@ -63,21 +63,7 @@ func checkValue[K comparable, V comparable](t *testing.T, lru *LRUCache[K, V], e
 
 func BenchmarkSetGet(b *testing.B) {
 	// preparation
-	lru := newLRUCache[int, int](10_000)
-
-	// test
-	for i := 0; i < b.N; i++ {
-		lru.Update(i, i)
-		value, exists := lru.Get(i)
-		if !exists || value != i {
-			b.Fatalf("value does not exist or %v != %v", value, i)
-		}
-	}
-}
-
-func BenchmarkSetGetT(b *testing.B) {
-	// preparation
-	lru := newLRUCacheT[int, int](10_000)
+	lru := NewLRUCache[int, int](10_000)
 
 	// test
 	for i := 0; i < b.N; i++ {
